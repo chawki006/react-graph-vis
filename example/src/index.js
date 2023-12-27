@@ -4,13 +4,46 @@ import ReactDOM from "react-dom";
 
 const options = {
   layout: {
-    hierarchical: false
+    improvedLayout: true
+  },
+  nodes: {
+    shape: 'box',
+    font: {
+      size: 13
+    }
   },
   edges: {
-    color: "#000000"
-  }
-};
+    color: "#000000",
+  },
+  physics: {
+    enabled: false
+  }}
 
+const Modal = ({ nodeData, isOpen, onClose, onSave }) => {
+  const [data, setData] = useState(nodeData);
+
+  const handleChange = (e) => {
+    setData({ ...data, label: e.target.value });
+  };
+
+  const handleSave = () => {
+    onSave(data);
+    onClose();
+  };
+  console.log("isOpen")
+  console.log(nodeData)
+  console.log("isOpen")
+  if (!isOpen) return null;
+
+  return (
+    <div style={{ position: "fixed", top: "40%", left: "40%", backgroundColor: "grey", padding: "40px", zIndex: 100 }}>
+      <h2>Edit Node</h2>
+      <input type="text" value={nodeData.label} onChange={handleChange} />
+      <button onClick={handleSave}>Save</button>
+      <button onClick={onClose}>Close</button>
+    </div>
+  );
+};
 function randomColor() {
   const red = Math.floor(Math.random() * 256).toString(16).padStart(2, '0');
   const green = Math.floor(Math.random() * 256).toString(16).padStart(2, '0');
@@ -43,18 +76,17 @@ const App = () => {
   const [state, setState] = useState({
     counter: 5,
     graph: {
-      nodes: [
-        { id: 1, label: "Node 1", color: "#e04141" },
-        { id: 2, label: "Node 2", color: "#e09c41" },
-        { id: 3, label: "Node 3", color: "#e0df41" },
-        { id: 4, label: "Node 4", color: "#7be041" },
-        { id: 5, label: "Node 5", color: "#41e0c9" }
+      "nodes": [
+        { "id": 1, "label": "lambda_matthias-create-job", "color": "#e04141" },
+        { "id": 2, "label": "lambda_matthias-consume-job", "color": "#e09c41",  },
+        { "id": 3, "label": "s3_matthias-lambda-bucket", "color": "#e0df41",  },
+        { "id": 4, "label": "application_invoker_matthias-invoker-test", "color": "#7be041",  }
       ],
-      edges: [
-        { from: 1, to: 2 },
-        { from: 1, to: 3 },
-        { from: 2, to: 4 },
-        { from: 2, to: 5 }
+      "edges": [
+        { "from": 1, "to": 3 },
+        { "from": 1, "to": 4 },
+        { "from": 2, "to": 3 },
+        { "from": 4, "to": 2 }
       ]
     },
     events: {
@@ -68,29 +100,43 @@ const App = () => {
       doubleClick: ({ pointer: { canvas } }) => {
         createNode(canvas.x, canvas.y);
       }
-    }
+    },
+    modalOpen: false,
+    editingNode: null
   })
-  const { graph, events } = state;
+  const { graph, events, modalOpen, editingNode } = state;
+
+  const handleSelect = ({ nodes }) => {
+    if (nodes.length > 0) {
+      const nodeId = nodes[0];
+      const nodeData = graph.nodes.find(node => node.id === nodeId);
+      setState({ ...state, modalOpen: true, editingNode: nodeData });
+    }
+  };
+
+  const handleCloseModal = () => {
+    setState({ ...state, modalOpen: false, editingNode: null });
+  };
+
+  const handleSaveNodeData = (newData) => {
+    const newNodes = graph.nodes.map(node => node.id === newData.id ? newData : node);
+    setState({ ...state, graph: { ...graph, nodes: newNodes } });
+  };
+
+  // Update your events object
+  const updatedEvents = { ...events, select: handleSelect };
+
   return (
     <div>
-      <h1>React graph vis</h1>
-      <p>
-        <a href="https://github.com/crubier/react-graph-vis">Github</a> -{" "}
-        <a href="https://www.npmjs.com/package/react-graph-vis">NPM</a>
-      </p>
-      <p><a href="https://github.com/crubier/react-graph-vis/tree/master/example/src/index.js">Source of this page</a></p>
-      <p>A React component to display beautiful network graphs using vis.js</p>
-      <p>Make sure to visit <a href="http://visjs.org">visjs.org</a> for more info.</p>
-      <p>This package allows to render network graphs using vis.js.</p>
-      <p>Rendered graphs are scrollable, zoomable, retina ready, dynamic</p>
-      <p>In this example, we manage state with react: on double click we create a new node, and on select we display an alert.</p>
-      <Graph graph={graph} options={options} events={events} style={{ height: "640px" }} />
+      <Graph graph={graph} options={options} events={updatedEvents} style={{ height: "640px" }} />
+      <Modal
+        nodeData={editingNode}
+        isOpen={modalOpen}
+        onClose={handleCloseModal}
+        onSave={handleSaveNodeData}
+      />
     </div>
   );
+};
 
-}
-
-ReactDOM.render(
-  <App />,
-  document.getElementById("root")
-);
+ReactDOM.render(<App />, document.getElementById("root"));
